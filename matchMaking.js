@@ -1,6 +1,5 @@
 mongo = require("mongodb");
 Cursor = mongo.Cursor;
-var mongoURL = "mongodb://127.0.0.1:3001/meteor";
 
 exports.MatchMaking = function() {
   "use strict";
@@ -8,7 +7,7 @@ exports.MatchMaking = function() {
   let test = '';
 
   this.findWar = ( ) => {
-        console.log('-- On commence à chercher des joueurs dans la file d\'attente');
+        console.log('[MATCHMAKING] -- On commence à chercher des joueurs dans la file d\'attente');
 
         var MatchMaker = this;
 
@@ -47,32 +46,7 @@ exports.MatchMaking = function() {
           multi: true
         });
 
-
-        // On insere uen nouvelle partie en base de données
-        var gameListDB = db.collection('gameListDB');
-        gameListDB.insert({
-              players   : [{
-                _id   : player1._id,
-                ready : true
-              },{
-                _id   : player2._id,
-                ready: true
-              }
-            ],
-              unitList  : []
-        }, function(err, result) {
-          generatePlayer(player1._id, socketsConnected[player1._id]);
-          generatePlayer(player2._id, socketsConnected[player2._id]);
-
-          // On envoie un ordre a ces deux clients pour leur dire de rejoindre la partie ( /game )
-          console.log('[MATCHMAKING] -- Partie crée avec l\'ID : ' + result.ops[0]._id);
-
-          socketsConnected[player1._id].emit('joinGame', result.ops[0]._id);
-          socketsConnected[player2._id].emit('joinGame', result.ops[0]._id);
-        });
-
-
-
+        GameList.startNewGame(player1._id, player2._id);
       });
     } else {
       console.log('[MATCHMAKING] -- Aucune partie possible pour le moment ('+tabUserDispo.length + '/2)');

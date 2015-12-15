@@ -1,11 +1,47 @@
 var http = require('http'),
 io = require('socket.io'),
 cu = require('./class_unit.js'),
+
+
+
 oMatchMaking = require('./matchMaking.js');
 
+GLOBAL.uniqid = function () {
+    var ts=String(new Date().getTime()), i = 0, out = '';
+    for(i=0;i<ts.length;i+=2) {
+       out+=Number(ts.substr(i, 2)).toString(36);
+    }
+    return ('d'+out);
+}
+
+
+oGameObject = require('./classes/class_gameObject.js');
+oGameObject = oGameObject.class_gameObject;
+oGameList = require('./classes/class_gameList.js');
+oGameList = oGameList.class_gameList;
+
+mongoURL = "mongodb://127.0.0.1:3001/meteor";
 
 
 
+
+/**
+* Variables Globales
+**/
+GLOBAL.dbmongo = null;
+
+// On stocl l'association Joueur -> gameID
+GLOBAL.playerList = {};
+
+// ON va stocker ici l'ensemble des sockets connectés sur le serveur, classé par ID player. ça permettra d'aller chercher le socket de n'importe ou pour envoyer un ordre au client
+GLOBAL.socketsConnected = {};
+
+
+
+/**
+* Instances
+*/
+GLOBAL.GameList = new oGameList();
 
 
 server = http.createServer(function(req, res){
@@ -16,77 +52,75 @@ server.listen(2000);
 
 var socket = io.listen(server);
 
-var player = [];
 
-// ON va stocker ici l'ensemble des sockets connectés sur le serveur, classé par ID player. ça permettra d'aller chercher le socket de n'importe ou pour envoyer un ordre au client
-GLOBAL.socketsConnected = {};
-
-function uniqid() {
-    var ts=String(new Date().getTime()), i = 0, out = '';
-    for(i=0;i<ts.length;i+=2) {
-       out+=Number(ts.substr(i, 2)).toString(36);
-    }
-    return ('d'+out);
-}
-
-socket.on('connection', function(client){
+// @FIXME on vide toutes les games, il faudra les archiver plutot
+mongo.MongoClient.connect(mongoURL, function(err, db) {
+  dbmongo = db;
+  runServerAS();
+});
 
 
-	client.on('logon', function(ident){
-		// on envoie au nouveau joueur les informations des autres joueurs
-    isNewPlayer(ident, client);
-		initializePlayer(client);
-  });
 
 
-	client.on('goTo', function(gameId, unitId, destination){
+runServerAS = function() {
+  gameListDB = dbmongo.collection('gameListDb');
+  gameListDB.remove();
 
-		console.log('MOVED: '+unitId+ ' TO '+destination);
-		client.broadcast.emit('moved', unitId, destination);
+  socket.on('connection', function(client){
 
+
+  	client.on('logon', function(ident){
+  		// on envoie au nouveau joueur les informations des autres joueur
+  		initializePlayer(ident, client);
+    });
+
+
+  	client.on('goTo', function(gameId, unitId, destination){
+  	    client.broadcast.emit('moved', unitId, destination);
     });
 
 
     client.on('disconnect', function(){
-			// @TODO Si le joueur est en recherche de partie, on devrait le rendre indisponible
+  			// @TODO Si le joueur est en recherche de partie, on devrait le rendre indisponible
     });
 
-	client.on('findWar', function(ident){
-		if (socketsConnected[ident] == undefined) {
-			console.log('[SOCKET] Nouvelle connexion d\'un joueur. Stockage du stocket dans le tableau');
-			socketsConnected[ident] = client;
-		}
-		console.log('[MATCHMAKING] Recherche d\'une nouvelle partie en cours.');
+  	client.on('findWar', function(ident){
+  		if (socketsConnected[ident] == undefined) {
+  			console.log('[SOCKET] Nouvelle connexion d\'un joueur. Stockage du stocket dans le tableau');
+  			socketsConnected[ident] = client;
+  		}
+  		console.log('[MATCHMAKING] Recherche d\'une nouvelle partie en cours.');
 
-		// On cherche deux utilisateurs qui sont "Ready" en base de donnée
-		MatchMaker = new oMatchMaking.MatchMaking();
-		MatchMaker.findWar();
-	});
-});
-
+  		// On cherche deux utilisateurs qui sont "Ready" en base de donnée
+  		MatchMaker = new oMatchMaking.MatchMaking();
+  		MatchMaker.findWar();
+  	});
+  });
+}
 
 /** Methode qui permet de savoir si un joueur s'est déjà connecté ou non
   *
   */
-isNewPlayer = function (ident, client) {
+isNewPlayer = function (ident, client, gameId) {
 	var bool = true;
-	player.forEach(function(aPlayer, index) {
+  socketsConnected[ident] = client;
+
+	for(var aPlayer in GameList.getGame(gameId).getPlayer()) {
 		if (aPlayer.userId == ident) {
 			console.log('[SOCKET] Un joueur vient de se connecter mais il était déjà present dans la partie', ident, client.id);
 			// Oui, on met donc à jour sont ID socket.io
 			aPlayer.socketId = client.id;
 			bool = false;
 		}
-	});
+	};
 
 	return bool;
 };
 
-generatePlayer = function(ident, client) {
+generatePlayer = function(ident, client, gameId) {
 	// On va maintenant mettre une unité à sa disposition
 	//@TODO il faudra ici ajouter plusieurs unité en fonction de la puissance du joueur
-	units = [];
-
+	var units = [];
 
 	for (i = 0; i < 2; i++) {
 		unitId = uniqid();
@@ -94,8 +128,7 @@ generatePlayer = function(ident, client) {
 		unit.setUnitId(unitId);
 
 		// Gestion gauche droite
-		console.log(player.length);
-		if (player.length == 0) {
+		if (GameList.getGame(gameId).getNbPlayer() == 1) {
 			unit.setPosition(32*i);
 		} else {
 			unit.setPosition(32*i + 600);
@@ -108,27 +141,35 @@ generatePlayer = function(ident, client) {
 		socketId: client.id,
 		userId: ident,
 		units: units
-	}
+	};
 
-	player.push(aPlayer);
+  // On stock le gameId pour chaque joueur, ce sera ainsi plus facile de retrouver dans quel partie est positionné le joueur
+  playerList[ident] = gameId;
 
-	console.log('Un nouveau joueur vient de rejoindre la partie', ident, client.id);
+	console.log('[GAME] Le joueur a été généré sur la carte', ident);
+
+  return aPlayer;
 };
 
-initializePlayer = function(client) {
-	player.forEach(function(aPlayer, index) {
+initializePlayer = function(userId, client) {
+
+  // On va chercher dans quel partie se trouve le joueur
+  gameId = playerList[userId];
+
+  // En cas de reconnexion, on rassocie correctement tous les socket et id
+  isNewPlayer(userId, client, gameId);
+
+  mesPlayers = GameList.getGame(gameId).getPlayer();
+	for(var index in mesPlayers) {
+    aPlayer = mesPlayers[index];
 		// Ce n'est pas le même joueur, donc on transmet toutes les unités
 		aPlayer.units.forEach(function(unit) {
-      console.log('DEBUG::::', client.id);
 			if (client.id == aPlayer.socketId) {
-				console.log("Transmission de son propre joueur");
 				sprite = 'dude';
 			} else {
-				console.log("Transmission d'un joueur déjà present à un nouveau joueur");
 				sprite = 'dude2'
 			}
-			console.log('Owner', unit.getOwner());
 			client.emit('addUnit', sprite, unit.getPosition(), unit.getUnitId(), unit.getOwner());
 		});
-	});
+	};
 };
