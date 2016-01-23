@@ -84,6 +84,10 @@ runServerAS = function() {
   			// @TODO Si le joueur est en recherche de partie, on devrait le rendre indisponible
     });
 
+    client.on('validateAction', function(gameId, unitId, action){
+  	   class_actions[action.type](gameId, unitId, action.args);
+    });
+
   	client.on('findWar', function(ident){
   		if (socketsConnected[ident] == undefined) {
   			console.log('[SOCKET] Nouvelle connexion d\'un joueur. Stockage du stocket dans le tableau');
@@ -120,12 +124,13 @@ isNewPlayer = function (ident, client, gameId) {
 generatePlayer = function(ident, client, gameId) {
 	// On va maintenant mettre une unité à sa disposition
 	//@TODO il faudra ici ajouter plusieurs unité en fonction de la puissance du joueur
-	var units = [];
+	var units = {};
 
 	for (i = 0; i < 2; i++) {
 		unitId = uniqid();
 		unit = new cu.class_unit('dumb', ident, null);
 		unit.setUnitId(unitId);
+
 
 		// Gestion gauche droite
 		if (GameList.getGame(gameId).getNbPlayer() == 1) {
@@ -133,7 +138,7 @@ generatePlayer = function(ident, client, gameId) {
 		} else {
 			unit.setPosition(32*i + 600);
 		}
-		units.push(unit);
+		units[unitId] = unit;
 	}
 
 	// On sauvegarde une partie des infos pour identifier ce joueur par la suite.
@@ -163,7 +168,7 @@ initializePlayer = function(userId, client) {
 	for(var index in mesPlayers) {
     aPlayer = mesPlayers[index];
 		// Ce n'est pas le même joueur, donc on transmet toutes les unités
-		aPlayer.units.forEach(function(unit) {
+		for(var unit in aPlayer.units) {
 			if (client.id == aPlayer.socketId) {
 				sprite = 'dude';
 			} else {

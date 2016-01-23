@@ -34,8 +34,8 @@ exports.class_gameObject = function () {
   /*****************************************************************************
   ** Getters__
   */
-  this.getPlayer    = ( n ) => {
-    return (n ? attr.pl[n] : attr.pl);
+  this.getPlayer    = ( userId ) => {
+    return (userId ? attr.pl[userId] : attr.pl);
   };
   this.get_id     = ( ) => {
     return attr._id;
@@ -64,6 +64,11 @@ exports.class_gameObject = function () {
       nbPlayer++;
     }
   };
+
+
+  this.sendAction = ('all', 'move', unitId, args) {
+
+  }
   /* __Setters
   *****************************************************************************/
 

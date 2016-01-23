@@ -75,6 +75,9 @@ exports.class_unit = function (aType, anOwner, aPhaserItem) {
   this.getUnitId	= ( ) => {
 	  return unitId;
   }
+  this.getAction	= ( ) => {
+    return action;
+  };
   /* __Getters
   *****************************************************************************/
 
@@ -109,7 +112,10 @@ exports.class_unit = function (aType, anOwner, aPhaserItem) {
 	  if (unitId == null) {
 		  unitId = id;
 	  }
-  }
+  };
+  this.setAction	= ( action ) => {
+    this.action = action;
+  };
   /* __Setters
   *****************************************************************************/
 };
