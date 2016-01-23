@@ -1,17 +1,16 @@
 var http = require('http'),
 io = require('socket.io'),
 cu = require('./class_unit.js'),
+class_actions = require('./classes/class_actions.js').class_action,
 
 
 
 oMatchMaking = require('./matchMaking.js');
 
 GLOBAL.uniqid = function () {
-    var ts=String(new Date().getTime()), i = 0, out = '';
-    for(i=0;i<ts.length;i+=2) {
-       out+=Number(ts.substr(i, 2)).toString(36);
-    }
-    return ('d'+out);
+  var time = new Date().getTime();
+  while (time == new Date().getTime());
+  return new Date().getTime().toString(36);
 }
 
 
@@ -35,6 +34,7 @@ GLOBAL.playerList = {};
 
 // ON va stocker ici l'ensemble des sockets connectés sur le serveur, classé par ID player. ça permettra d'aller chercher le socket de n'importe ou pour envoyer un ordre au client
 GLOBAL.socketsConnected = {};
+
 
 
 
@@ -74,22 +74,19 @@ runServerAS = function() {
   		initializePlayer(ident, client);
     });
 
-
-  	client.on('goTo', function(gameId, unitId, destination){
-  	    client.broadcast.emit('moved', unitId, destination);
-    });
-
-
-    client.on('disconnect', function(){
+    client.on('disconnect', function(ident){
   			// @TODO Si le joueur est en recherche de partie, on devrait le rendre indisponible
+        //delete socketsConnected[ident] ;
     });
 
-    client.on('validateAction', function(gameId, unitId, action){
+    client.on('askValidateAction', function(gameId, unitId, action){
+       console.log('[SOCKET] On vient de recevoir une demande action', gameId, unitId, action);
+       console.log(class_actions);
   	   class_actions[action.type](gameId, unitId, action.args);
     });
 
   	client.on('findWar', function(ident){
-  		if (socketsConnected[ident] == undefined) {
+  		if (!socketsConnected[ident] || socketsConnected[ident].id != client.id) {
   			console.log('[SOCKET] Nouvelle connexion d\'un joueur. Stockage du stocket dans le tableau');
   			socketsConnected[ident] = client;
   		}
@@ -126,12 +123,11 @@ generatePlayer = function(ident, client, gameId) {
 	//@TODO il faudra ici ajouter plusieurs unité en fonction de la puissance du joueur
 	var units = {};
 
+  var i;
 	for (i = 0; i < 2; i++) {
-		unitId = uniqid();
+		unitId = 'U_'+uniqid();
 		unit = new cu.class_unit('dumb', ident, null);
 		unit.setUnitId(unitId);
-
-
 		// Gestion gauche droite
 		if (GameList.getGame(gameId).getNbPlayer() == 1) {
 			unit.setPosition(32*i);
@@ -157,7 +153,6 @@ generatePlayer = function(ident, client, gameId) {
 };
 
 initializePlayer = function(userId, client) {
-
   // On va chercher dans quel partie se trouve le joueur
   gameId = playerList[userId];
 
@@ -169,12 +164,13 @@ initializePlayer = function(userId, client) {
     aPlayer = mesPlayers[index];
 		// Ce n'est pas le même joueur, donc on transmet toutes les unités
 		for(var unit in aPlayer.units) {
+      aUnit = aPlayer.units[unit];
 			if (client.id == aPlayer.socketId) {
 				sprite = 'dude';
 			} else {
 				sprite = 'dude2'
 			}
-			client.emit('addUnit', sprite, unit.getPosition(), unit.getUnitId(), unit.getOwner());
-		});
+			client.emit('addUnit', sprite, aUnit.getPosition(), aUnit.getUnitId(), aUnit.getOwner());
+		}
 	};
 };

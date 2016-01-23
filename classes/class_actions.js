@@ -1,11 +1,11 @@
-class_action =  {
+exports.class_action =  {
   move: function ( gameId, unitId, args ) {
-    let game =   GameList.getGame(gameId);
+    var game =   GameList.getGame(gameId);
 
     players = game.getPlayer();
     for (var player in players) {
-      if (player.units[unitId]) {
-        player.units[unitId].setAction(args);
+      if (players[player].units[unitId]) {
+        players[player].units[unitId].setAction(args);
       }
     }
 

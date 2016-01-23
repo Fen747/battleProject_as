@@ -66,9 +66,17 @@ exports.class_gameObject = function () {
   };
 
 
-  this.sendAction = ('all', 'move', unitId, args) {
+  this.sendAction = (who, action, unitId, args) => {
+    players = this.getPlayer();
 
-  }
+    console.log('[SOCKET] On informe tous les joueurs dune nouvelle action');
+
+    args.type = action;
+
+    for (var player in players) {
+        socketsConnected[players[player].userId].emit('validatedAction', unitId, args);
+    }
+  };
   /* __Setters
   *****************************************************************************/
 
