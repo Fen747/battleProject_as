@@ -4,8 +4,8 @@ exports.class_action =  {
 
     players = game.getPlayer();
     for (var player in players) {
-      if (players[player].units[unitId]) {
-        players[player].units[unitId].setAction(args);
+      if (players[player].getUnits(unitId)) {
+        players[player].getUnits(unitId).setAction(args);
       }
     }
 

@@ -39,6 +39,7 @@ exports.class_gameList = function () {
     gameList = {};
 
     let NBREMOVED = gameListDB.remove({}, function() {
+
       let game = new oGameObject();
 
       let gameId = game.get_id();
@@ -67,8 +68,8 @@ exports.class_gameList = function () {
         // On envoie un ordre a ces deux clients pour leur dire de rejoindre la partie ( /game )
         console.log('[MATCHMAKING] -- Partie crée avec l\'ID : ' + gameId);
 
-        socketsConnected[p1.userId].emit('joinGame', gameId);
-        socketsConnected[p2.userId].emit('joinGame', gameId);
+        socketsConnected[p1.getUserId()].emit('joinGame', gameId);
+        socketsConnected[p2.getUserId()].emit('joinGame', gameId);
       });
     });
   };

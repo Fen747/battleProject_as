@@ -1,7 +1,9 @@
 var http = require('http'),
 io = require('socket.io'),
 cu = require('./class_unit.js'),
+cp = require('./classes/class_player.js'),
 class_actions = require('./classes/class_actions.js').class_action,
+
 
 
 
@@ -94,7 +96,8 @@ runServerAS = function() {
 
   		// On cherche deux utilisateurs qui sont "Ready" en base de donnée
   		MatchMaker = new oMatchMaking.MatchMaking();
-  		MatchMaker.findWar();
+      MatchMaker.findWar();
+
   	});
   });
 }
@@ -102,20 +105,12 @@ runServerAS = function() {
 /** Methode qui permet de savoir si un joueur s'est déjà connecté ou non
   *
   */
-isNewPlayer = function (ident, client, gameId) {
-	var bool = true;
-  socketsConnected[ident] = client;
+isNewPlayer = function (userId, client, gameId) {
+  socketsConnected[userId] = client;
 
-	for(var aPlayer in GameList.getGame(gameId).getPlayer()) {
-		if (aPlayer.userId == ident) {
-			console.log('[SOCKET] Un joueur vient de se connecter mais il était déjà present dans la partie', ident, client.id);
-			// Oui, on met donc à jour sont ID socket.io
-			aPlayer.socketId = client.id;
-			bool = false;
-		}
-	};
+  GameList.getGame(gameId).getPlayer(userId).setSocketId(client.id);
 
-	return bool;
+	return true;
 };
 
 generatePlayer = function(ident, client, gameId) {
@@ -138,11 +133,7 @@ generatePlayer = function(ident, client, gameId) {
 	}
 
 	// On sauvegarde une partie des infos pour identifier ce joueur par la suite.
-	var aPlayer = {
-		socketId: client.id,
-		userId: ident,
-		units: units
-	};
+  var aPlayer = new cp.class_player(ident, units, client.id);
 
   // On stock le gameId pour chaque joueur, ce sera ainsi plus facile de retrouver dans quel partie est positionné le joueur
   playerList[ident] = gameId;
@@ -161,16 +152,21 @@ initializePlayer = function(userId, client) {
 
   mesPlayers = GameList.getGame(gameId).getPlayer();
 	for(var index in mesPlayers) {
+    console.log('for1');
     aPlayer = mesPlayers[index];
 		// Ce n'est pas le même joueur, donc on transmet toutes les unités
-		for(var unit in aPlayer.units) {
-      aUnit = aPlayer.units[unit];
-			if (client.id == aPlayer.socketId) {
+		for(var unit in aPlayer.getUnits()) {
+      console.log('for2');
+      aUnit = aPlayer.getUnits(unit);
+			if (client.id == aPlayer.getSocketId()) {
 				sprite = 'dude';
 			} else {
 				sprite = 'dude2'
 			}
+      //console.log('[SOCKET] Envoi dune unité au joueur ');
 			client.emit('addUnit', sprite, aUnit.getPosition(), aUnit.getUnitId(), aUnit.getOwner());
 		}
 	};
+
+  GameList.getGame(gameId).getPlayer(userId).startPingWatch();
 };

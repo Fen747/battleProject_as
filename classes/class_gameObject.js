@@ -60,7 +60,7 @@ exports.class_gameObject = function () {
   */
   this.addPlayer = (player) => {
     if (nbPlayer < 2) {
-      attr.pl[player.userId] = player;
+      attr.pl[player.getUserId()] = player;
       nbPlayer++;
     }
   };
@@ -74,7 +74,7 @@ exports.class_gameObject = function () {
     args.type = action;
 
     for (var player in players) {
-        socketsConnected[players[player].userId].emit('validatedAction', unitId, args);
+        socketsConnected[players[player].getUserId()].emit('validatedAction', unitId, args);
     }
   };
   /* __Setters
