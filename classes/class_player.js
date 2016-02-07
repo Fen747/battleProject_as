@@ -19,6 +19,7 @@ exports.class_player = function ( userId_, units_, socketId_ ) {
       averageLatency = 0,
       waitingPing = new Array(),
       checkedPing = new Array(),
+      offsetTimeClient = 0,
       self = this;
   /* __Private attributes
   *****************************************************************************/
@@ -37,6 +38,9 @@ exports.class_player = function ( userId_, units_, socketId_ ) {
   };
   this.getAverageLatency = ( ) => {
     return (averageLatency);
+  };
+  this.getOffsetTimeClient = ( ) => {
+    return (offsetTimeClient);
   };
   /* __Getters
   *****************************************************************************/
@@ -79,9 +83,13 @@ else
   this.startPingWatch = ( ) => {
 
     // When the client pong
-    socketsConnected[userId].on("pong", function (d) {
+    socketsConnected[userId].on("pong", function (d, clientTimeStamp) {
       //console.log('PONG:'+userId+':', d);
-      checkedPing.unshift((new Date().getTime() - d) / 2);
+      // On calcule la latence : temps serveur - temps client / 2 (aller - retour)
+      var localTime = new Date().getTime();
+      var offsetWithoutPing = localTime - clientTimeStamp;
+
+      checkedPing.unshift((localTime - d) / 2);
       while (checkedPing.length > 5)
         checkedPing.pop();
 
@@ -100,7 +108,8 @@ else
       }
 
       averageLatency = (tmp / (i + 1));
-      console.log('AVGL:'+userId+':', averageLatency, i, checkedPing.length, waitingPing.length);
+      offsetTimeClient =  offsetWithoutPing + averageLatency;
+      //console.log('AVGL:'+userId+':'+averageLatency + ' --- Offset:'+offsetTimeClient );
 
     });
 

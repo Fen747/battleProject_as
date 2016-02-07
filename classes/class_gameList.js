@@ -65,6 +65,9 @@ exports.class_gameList = function () {
         p2 = generatePlayer(p2, socketsConnected[p2], gameId);
         game.addPlayer(p2);
 
+        // On lance le tickrate de la Partie
+        game.start();
+
         // On envoie un ordre a ces deux clients pour leur dire de rejoindre la partie ( /game )
         console.log('[MATCHMAKING] -- Partie crée avec l\'ID : ' + gameId);
 

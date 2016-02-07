@@ -11,6 +11,8 @@ exports.class_gameObject = function () {
       endedAt   : null
   };
 
+  let tick = null;
+
   let nbPlayer = 0;
   /* __Private attributes
   *****************************************************************************/
@@ -65,16 +67,21 @@ exports.class_gameObject = function () {
     }
   };
 
+  this.start = () => {
+    this.tick = new tick_rate(this);
+  };
+
 
   this.sendAction = (who, action, unitId, args) => {
     players = this.getPlayer();
 
-    console.log('[SOCKET] On informe tous les joueurs dune nouvelle action');
+    console.log('[SOCKET] On informe tous les joueurs dune nouvelle action3');
 
     args.type = action;
 
+    var localTime = new Date().getTime();
     for (var player in players) {
-        socketsConnected[players[player].getUserId()].emit('validatedAction', unitId, args);
+        socketsConnected[players[player].getUserId()].emit('validatedAction', unitId, args, ( localTime - players[player].getOffsetTimeClient() ));
     }
   };
   /* __Setters

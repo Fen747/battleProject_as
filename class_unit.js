@@ -1,4 +1,4 @@
-exports.class_unit = function (aType, anOwner, aPhaserItem) {
+exports.class_unit = function (aType, anOwner, position_) {
   "use strict";
 
   /*****************************************************************************
@@ -13,16 +13,17 @@ exports.class_unit = function (aType, anOwner, aPhaserItem) {
       lifePoints  : 100,
       damage      : 1,
       range       : 3,
+      radius      : 16,
       effects     : [],
-      position    : [],
-      phaser_item : aPhaserItem || null,
+      position    : position_,
+
       speed       : {
         max     : 200,
         current : 0
       }
   };
 
-  let unitId = null;
+  let unitId = 'U_'+uniqid();
   /* __Private attributes
   *****************************************************************************/
 
@@ -32,6 +33,7 @@ exports.class_unit = function (aType, anOwner, aPhaserItem) {
   this.action = {
     type : null
   };
+  this.nextX = position_;
   /* __Public attributes
   *****************************************************************************/
 
@@ -57,9 +59,6 @@ exports.class_unit = function (aType, anOwner, aPhaserItem) {
   this.getPosition  = ( ) => {
     return attr.position;
   };
-  this.getPhaserItem  = ( ) => {
-    return attr.phaser_item;
-  };
   this.getAction  = ( ) => {
     return attr.action;
   };
@@ -74,9 +73,9 @@ exports.class_unit = function (aType, anOwner, aPhaserItem) {
   };
   this.getUnitId	= ( ) => {
 	  return unitId;
-  }
-  this.getAction	= ( ) => {
-    return action;
+  };
+  this.getRadius	= ( ) => {
+    return attr.radius;
   };
   /* __Getters
   *****************************************************************************/
@@ -113,8 +112,13 @@ exports.class_unit = function (aType, anOwner, aPhaserItem) {
 		  unitId = id;
 	  }
   };
-  this.setAction	= ( action ) => {
-    this.action = action;
+  this.setAction	= ( type, action ) => {
+    if (!type) {
+      this.action = { type: null };
+    } else {
+      this.action = action;
+      this.action.type = type;
+    }
   };
   /* __Setters
   *****************************************************************************/

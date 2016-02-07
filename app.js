@@ -3,11 +3,14 @@ io = require('socket.io'),
 cu = require('./class_unit.js'),
 cp = require('./classes/class_player.js'),
 class_actions = require('./classes/class_actions.js').class_action,
+tick_rate = require('./classes/class_tickrate.js').class_tickRate,
 
 
 
 
 oMatchMaking = require('./matchMaking.js');
+
+GLOBAL.tick_rate = tick_rate;
 
 GLOBAL.uniqid = function () {
   var time = new Date().getTime();
@@ -83,7 +86,6 @@ runServerAS = function() {
 
     client.on('askValidateAction', function(gameId, unitId, action){
        console.log('[SOCKET] On vient de recevoir une demande action', gameId, unitId, action);
-       console.log(class_actions);
   	   class_actions[action.type](gameId, unitId, action.args);
     });
 
@@ -120,16 +122,17 @@ generatePlayer = function(ident, client, gameId) {
 
   var i;
 	for (i = 0; i < 2; i++) {
-		unitId = 'U_'+uniqid();
-		unit = new cu.class_unit('dumb', ident, null);
-		unit.setUnitId(unitId);
-		// Gestion gauche droite
+    // Gestion gauche droite
+    var position = null;
 		if (GameList.getGame(gameId).getNbPlayer() == 1) {
-			unit.setPosition(32*i);
+			position = (32*i);
 		} else {
-			unit.setPosition(32*i + 600);
+			position = (32*i + 600);
 		}
-		units[unitId] = unit;
+
+		unit = new cu.class_unit('dumb', ident, position);
+
+		units[unit.getUnitId()] = unit;
 	}
 
 	// On sauvegarde une partie des infos pour identifier ce joueur par la suite.
@@ -152,21 +155,26 @@ initializePlayer = function(userId, client) {
 
   mesPlayers = GameList.getGame(gameId).getPlayer();
 	for(var index in mesPlayers) {
-    console.log('for1');
     aPlayer = mesPlayers[index];
 		// Ce n'est pas le même joueur, donc on transmet toutes les unités
 		for(var unit in aPlayer.getUnits()) {
-      console.log('for2');
       aUnit = aPlayer.getUnits(unit);
 			if (client.id == aPlayer.getSocketId()) {
 				sprite = 'dude';
 			} else {
 				sprite = 'dude2'
 			}
-      //console.log('[SOCKET] Envoi dune unité au joueur ');
+      console.log('[SOCKET] Envoi dune unité au joueur ');
 			client.emit('addUnit', sprite, aUnit.getPosition(), aUnit.getUnitId(), aUnit.getOwner());
 		}
 	};
 
   GameList.getGame(gameId).getPlayer(userId).startPingWatch();
+};
+
+Number.prototype.between = function(a, b) {
+  var min = Math.min.apply(Math, [a,b]),
+      max = Math.max.apply(Math, [a,b]);
+
+  return this > min && this < max;
 };
