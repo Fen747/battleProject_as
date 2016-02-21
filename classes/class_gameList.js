@@ -60,9 +60,9 @@ exports.class_gameList = function () {
           ],
             unitList  : []
       }, function(err, result) {
-        p1 = generatePlayer(p1, socketsConnected[p1], gameId);
+        p1 = generatePlayer(p1, socketsConnected[p1], game);
         game.addPlayer(p1);
-        p2 = generatePlayer(p2, socketsConnected[p2], gameId);
+        p2 = generatePlayer(p2, socketsConnected[p2], game);
         game.addPlayer(p2);
 
         // On lance le tickrate de la Partie

@@ -54,6 +54,9 @@ exports.class_gameObject = function () {
   this.getNbPlayer = () => {
     return nbPlayer;
   };
+  this.getGameId = () => {
+    return attr._id;
+  };
   /* __Getters
   *****************************************************************************/
 
@@ -72,16 +75,14 @@ exports.class_gameObject = function () {
   };
 
 
-  this.sendAction = (who, action, unitId, args) => {
-    players = this.getPlayer();
+  this.sendAction = (unit) => {
+    let players = this.getPlayer();
 
-    console.log('[SOCKET] On informe tous les joueurs dune nouvelle action3');
-
-    args.type = action;
+    console.log('[SOCKET] On informe tous les joueurs dune nouvelle action');
 
     var localTime = new Date().getTime();
     for (var player in players) {
-        socketsConnected[players[player].getUserId()].emit('validatedAction', unitId, args, ( localTime - players[player].getOffsetTimeClient() ));
+        socketsConnected[players[player].getUserId()].emit('validatedAction', unit.getUnitId(), unit.action, ( localTime - players[player].getOffsetTimeClient() ));
     }
   };
   /* __Setters

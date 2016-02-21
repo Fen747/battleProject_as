@@ -1,9 +1,10 @@
 var http = require('http'),
 io = require('socket.io'),
-cu = require('./class_unit.js'),
+cu = require('./classes/class_unit.js'),
 cp = require('./classes/class_player.js'),
 class_actions = require('./classes/class_actions.js').class_action,
 tick_rate = require('./classes/class_tickrate.js').class_tickRate,
+Tracker = require('meteor-standalone-tracker'),
 
 
 
@@ -24,7 +25,7 @@ oGameObject = oGameObject.class_gameObject;
 oGameList = require('./classes/class_gameList.js');
 oGameList = oGameList.class_gameList;
 
-mongoURL = "mongodb://127.0.0.1:3001/meteor";
+mongoURL = "mongodb://127.0.0.1:81/meteor";
 
 
 
@@ -40,7 +41,7 @@ GLOBAL.playerList = {};
 // ON va stocker ici l'ensemble des sockets connectés sur le serveur, classé par ID player. ça permettra d'aller chercher le socket de n'importe ou pour envoyer un ordre au client
 GLOBAL.socketsConnected = {};
 
-
+GLOBAL.Tracker =  Tracker;
 
 
 /**
@@ -86,7 +87,7 @@ runServerAS = function() {
 
     client.on('askValidateAction', function(gameId, unitId, action){
        console.log('[SOCKET] On vient de recevoir une demande action', gameId, unitId, action);
-  	   class_actions[action.type](gameId, unitId, action.args);
+  	   class_actions[action.type](gameId, unitId, action);
     });
 
   	client.on('findWar', function(ident){
@@ -115,7 +116,7 @@ isNewPlayer = function (userId, client, gameId) {
 	return true;
 };
 
-generatePlayer = function(ident, client, gameId) {
+generatePlayer = function(ident, client, game) {
 	// On va maintenant mettre une unité à sa disposition
 	//@TODO il faudra ici ajouter plusieurs unité en fonction de la puissance du joueur
 	var units = {};
@@ -124,13 +125,13 @@ generatePlayer = function(ident, client, gameId) {
 	for (i = 0; i < 2; i++) {
     // Gestion gauche droite
     var position = null;
-		if (GameList.getGame(gameId).getNbPlayer() == 1) {
+		if (game.getNbPlayer() == 1) {
 			position = (32*i);
 		} else {
 			position = (32*i + 600);
 		}
 
-		unit = new cu.class_unit('dumb', ident, position);
+		unit = new cu.class_unit('dumb', ident, position, game);
 
 		units[unit.getUnitId()] = unit;
 	}
@@ -139,7 +140,7 @@ generatePlayer = function(ident, client, gameId) {
   var aPlayer = new cp.class_player(ident, units, client.id);
 
   // On stock le gameId pour chaque joueur, ce sera ainsi plus facile de retrouver dans quel partie est positionné le joueur
-  playerList[ident] = gameId;
+  playerList[ident] = game.getGameId();
 
 	console.log('[GAME] Le joueur a été généré sur la carte', ident);
 

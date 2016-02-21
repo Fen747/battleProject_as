@@ -1,4 +1,4 @@
-exports.class_unit = function (aType, anOwner, position_) {
+exports.class_unit = function (aType, anOwner, position_, game_) {
   "use strict";
 
   /*****************************************************************************
@@ -23,7 +23,11 @@ exports.class_unit = function (aType, anOwner, position_) {
       }
   };
 
+  let game = game_;
+
   let unitId = 'U_'+uniqid();
+
+  let self = this;
   /* __Private attributes
   *****************************************************************************/
 
@@ -33,6 +37,8 @@ exports.class_unit = function (aType, anOwner, position_) {
   this.action = {
     type : null
   };
+  this.actionDep = new Tracker.Dependency;
+
   this.nextX = position_;
   /* __Public attributes
   *****************************************************************************/
@@ -77,6 +83,9 @@ exports.class_unit = function (aType, anOwner, position_) {
   this.getRadius	= ( ) => {
     return attr.radius;
   };
+  this.getGame	= ( ) => {
+    return game;
+  };
   /* __Getters
   *****************************************************************************/
 
@@ -112,14 +121,45 @@ exports.class_unit = function (aType, anOwner, position_) {
 		  unitId = id;
 	  }
   };
-  this.setAction	= ( type, action ) => {
-    if (!type) {
-      this.action = { type: null };
-    } else {
-      this.action = action;
-      this.action.type = type;
-    }
+  this.setAction = function( action ) {
+    this.equalFunc(self, action);
   };
+
+  let callSendAction = Tracker.autorun(function(thisComp) {
+    self.actionDep.depend();
+    if (!thisComp.firstRun){
+      game.sendAction(self);
+    }
+  });
   /* __Setters
   *****************************************************************************/
+};
+
+exports.class_unit.prototype.equalFunc = (self, nextAction) => {
+  var nextAction = nextAction || {type: null};
+
+  if (self.action && self.action.type !== nextAction.type) {
+    console.log('toto1');
+    self.writeAction(nextAction);
+    return false;
+  } else {
+    for (var key in nextAction) {
+      console.log('toto2');
+      // @FIXME On ne peut surement pas passer d'object dans nos arguments action
+      if (!(self.action.hasOwnProperty(key) && self.action[key] === nextAction[key])) {
+        console.log('toto3');
+        self.writeAction(nextAction);
+        return false;
+      }
+    }
+  }
+
+  return true;
+};
+
+exports.class_unit.prototype.writeAction = function (nextAction) {
+  console.log('On rentre dans writeaction');
+  this.action = nextAction;
+
+  this.actionDep.changed();
 };
