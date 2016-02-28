@@ -84,6 +84,9 @@ exports.class_gameObject = function () {
     for (var player in players) {
         socketsConnected[players[player].getUserId()].emit('validatedAction', unit.getUnitId(), unit.action, ( localTime - players[player].getOffsetTimeClient() ));
     }
+
+    // On déclare qu'on a envoyé l'action
+    unit.action.hasNotBeenSent = true;
   };
   /* __Setters
   *****************************************************************************/

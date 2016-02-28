@@ -9,8 +9,11 @@ exports.class_tickRate = function(game_) {
 
   // On crée un tableau d'unité pour les exploiter plus facilement par la suite
   let players = game.getPlayer();
+
   for (var player in players) {
+
     let units = players[player].getUnits();
+
     for (var unit in units) {
       unitList.add(units[unit]);
     }
@@ -18,16 +21,30 @@ exports.class_tickRate = function(game_) {
 
   // On lance les ticks
   instanceTickRate = setInterval(function() {
-      iTick++;
-      predictNewTick();
-      checkColision();
-      applyTick();
-  }, 1000/desiredFps);
+    iTick++;
+    predictNewTick();
+    checkColision();
+    applyTick();
+  }, (1000 / desiredFps));
 
+  let _stopUnit = u => {
+    u.setAction();
+    u.direction = 0;
+  };
+
+  let _getPlayers = () => game.getPlayer();
+
+  let _updateUnitNextPosition = u => u.action.toPos = u.nextX;
+
+  let _canMoveToX = (u) => {
+    return u.getMaxSpeed() * (1 / desiredFps) * u.direction;
+  };
 
   let predictNewTick = () => {
+
     for (let unit of unitList) {
-      var currentX = unit.getPosition();
+
+      let currentX = unit.getPosition();
 
       if (unit.action.type === 'move') {
         // Calcul de la direction
@@ -38,9 +55,9 @@ exports.class_tickRate = function(game_) {
           // On va vers la droite
           unit.direction = 1;
         }
-        var canMoveToX = unit.getMaxSpeed() * (1/desiredFps);
-        canMoveToX *= unit.direction;
-        unit.nextX = currentX + canMoveToX;
+
+        unit.nextX = currentX + _canMoveToX(unit);
+
         if (Reached(unit)) {
           unit.nextX = unit.action.toPos;
         }
@@ -49,48 +66,38 @@ exports.class_tickRate = function(game_) {
   };
 
   let checkColision = () => {
+
     for (let unit of unitList) {
+
       for (let unit2 of unitList) {
+
         if (!Object.is(unit, unit2)) {
-          var dimension1 = {
+
+          let dimension1 = {
             right : unit.nextX + unit.getRadius(),
             left  : unit.nextX - unit.getRadius()
           };
-          var dimension2 = {
+          let dimension2 = {
             right : unit2.nextX + unit2.getRadius(),
             left  : unit2.nextX - unit2.getRadius()
           };
 
           if (dimension1.left.between(dimension2.left, dimension2.right) || dimension1.right.between(dimension2.left, dimension2.right)) {
-            let nbPixel, a;
 
-            // @TODO On a un doute sur la gestion de tous les cas
             if (unit.action.type == 'move') {
+              // L'unité 1 collide avec l'unité 2
+
               if (dimension1.left.between(dimension2.left, dimension2.right)) {
-                  // L'unité 1 collide avec l'unité 2 de la gauche vers la droite
-
+                  // On calcule le nombre de pixel d'ecart entre la gauche de l'unité 1 et la droite de l'unité 2
+                  unit.nextX += dimension2.right - dimension1.left + 1;
+              } else if (dimension1.right.between(dimension2.left, dimension2.right))  {
                   // On calcule le nombre de pixel d'ecart entre la droite de l'unité 1 et la gauche de l'unité 2
-                  nbPixel = dimension2.right - dimension1.left;
-
-                  // On trouve le pixel entre les deux
-                  unit.nextX += nbPixel;
-
-              } else {
-                  // L'unité 1 collide avec l'unité 2 de la droite vers la gauche
-                  nbPixel = dimension1.right - dimension2.left;
-
-                  unit.nextX -= nbPixel;
+                  unit.nextX -= dimension1.right - dimension2.left + 1 ;
               }
             }
 
-            console.log('Colision detected',  unit.nextX, unit2.nextX);
-
-            unit.action.toPos = unit.nextX;
-
-            // @TODO Ici, le serveur est déjà au courant de l'action à envoyer, inutile de le repréciser
-            // @TODO Les untites doivent avoir au moins 1 ou 2 (suivant si cest paire ou impaire) entres chaques unités lors d'un collide.
-            // Les unités devronts forcément avoir une portée d'attaque supérieure ou égale à 2
-
+            console.log('Colision detected', unit.getUnitId(), unit2.getUnitId(), unit.nextX, unit2.nextX);
+            _updateUnitNextPosition(unit);
           }
         }
       }
@@ -98,37 +105,48 @@ exports.class_tickRate = function(game_) {
 
   };
 
+  // We apply the changes we computed
   let applyTick = () => {
-    for (let unit of unitList) {
-      if (unit.action.type == 'move') {
-        var currentX = unit.getPosition();
 
+    for (let unit of unitList) {
+
+      if (unit.action.type == 'move') {
         // @TODO Il faut log pour checker si ça fonctionne
         if (Reached(unit)) {
-          //unit.setAction();
-          unit.direction = 0;
+          _stopUnit(unit);
         }
+
         unit.setPosition(unit.nextX);
       }
 
-      // DEBUG MOUVEMENT
-      if (1) {
-        var mesUnits = [];
+      // UPDATE MOUVEMENT
+      if (!(iTick % 2)) {
+        let players = _getPlayers(),
+            units = [];
 
-        var mesPlayers = game.getPlayer();
-      	for(var index in mesPlayers) {
-          var aPlayer = mesPlayers[index];
-      		for(var unit123 in aPlayer.getUnits()) {
-            var aUnit = aPlayer.getUnits(unit123);
-            mesUnits.push({id: unit123, position: aUnit.getPosition()});
+      	for (let index in players) {
+
+          let aPlayer = players[index];
+
+      		for (let unit_id in aPlayer.getUnits()) {
+            units.push({
+              id        : unit_id,
+              position  : aPlayer.getUnits(unit_id).getPosition()
+            });
       		}
       	}
 
-        for(var index in mesPlayers) {
-          socketsConnected[aPlayer.getUserId()].emit('majPosDebug', mesUnits);
+        for (let index in players) {
+          socketsConnected[players[index].getUserId()].emit('update_unit_pos', units);
         }
 
       }
+
+      // Si l'action n'est pas send, on l'envoie
+      if (!unit.action.hasNotBeenSent) {
+        unit.actionDep.changed();
+      }
+
     }
   };
 

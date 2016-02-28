@@ -35,7 +35,8 @@ exports.class_unit = function (aType, anOwner, position_, game_) {
   ** Public attributes__
   */
   this.action = {
-    type : null
+    type : null,
+    hasNotBeenSent: false
   };
   this.actionDep = new Tracker.Dependency;
 
@@ -64,9 +65,6 @@ exports.class_unit = function (aType, anOwner, position_, game_) {
   };
   this.getPosition  = ( ) => {
     return attr.position;
-  };
-  this.getAction  = ( ) => {
-    return attr.action;
   };
   this.getCurSpeed  = ( ) => {
     return attr.speed.current;
@@ -121,8 +119,8 @@ exports.class_unit = function (aType, anOwner, position_, game_) {
 		  unitId = id;
 	  }
   };
-  this.setAction = function( action ) {
-    this.equalFunc(self, action);
+  this.setAction = ( action, doNotSend ) => {
+    return this.equalFunc(self, action, doNotSend);
   };
 
   let callSendAction = Tracker.autorun(function(thisComp) {
@@ -135,20 +133,21 @@ exports.class_unit = function (aType, anOwner, position_, game_) {
   *****************************************************************************/
 };
 
-exports.class_unit.prototype.equalFunc = (self, nextAction) => {
-  var nextAction = nextAction || {type: null};
+exports.class_unit.prototype.equalFunc = (self, nextAction_, doNotSend) => {
+  "use strict";
+  let nextAction = nextAction_ || {type: null, hasNotBeenSent: false};
 
   if (self.action && self.action.type !== nextAction.type) {
-    console.log('toto1');
-    self.writeAction(nextAction);
+    // L'action est de type differente, donc on informe les clients directement
+    self.writeAction(nextAction, doNotSend);
     return false;
   } else {
-    for (var key in nextAction) {
-      console.log('toto2');
+    for (let key in nextAction) {
+      // L'action est de même type, on va vérifier que les arguments aient changés, si oui, on informe les joueurs, sinon RAS
       // @FIXME On ne peut surement pas passer d'object dans nos arguments action
       if (!(self.action.hasOwnProperty(key) && self.action[key] === nextAction[key])) {
-        console.log('toto3');
-        self.writeAction(nextAction);
+        // Au moins un argument a changé, on informe les clients
+        self.writeAction(nextAction, doNotSend);
         return false;
       }
     }
@@ -157,9 +156,10 @@ exports.class_unit.prototype.equalFunc = (self, nextAction) => {
   return true;
 };
 
-exports.class_unit.prototype.writeAction = function (nextAction) {
-  console.log('On rentre dans writeaction');
+exports.class_unit.prototype.writeAction = function (nextAction, doNotSend) {
   this.action = nextAction;
 
-  this.actionDep.changed();
+  if (!doNotSend) {
+    this.actionDep.changed();
+  }
 };

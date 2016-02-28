@@ -5,7 +5,7 @@ exports.class_action =  {
     players = game.getPlayer();
     for (var player in players) {
       if (players[player].getUnits(unitId)) {
-        players[player].getUnits(unitId).setAction(args);
+        players[player].getUnits(unitId).setAction(args, 'do_not_send');
       }
     }
   },
